@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mmpg-rout"  # nome no PyPI (pip install mmpg-rout)
+version = "0.1.0"
+description = "Cria rota de host no Windows para direcionar tráfego de um destino a um gateway específico (útil p/ BISP/Impala, redes corporativas, etc.)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [{ name = "Valfrido Novais" }]
+keywords = ["route", "windows", "gateway", "networking", "impala", "bisp", "pmmg"]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: Microsoft :: Windows",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: System :: Networking",
+]
+
+[project.urls]
+Homepage = "https://github.com/ValfridoNovais/mmpg-rout"
+Repository = "https://github.com/ValfridoNovais/mmpg-rout"
+Issues = "https://github.com/ValfridoNovais/mmpg-rout/issues"
+
+# CLI opcional (comando de terminal: mmpg-rout)
+[project.scripts]
+mmpg-rout = "mmpg_rout.route:main"
+
+[tool.setuptools.packages.find]
+include = ["mmpg_rout"]
