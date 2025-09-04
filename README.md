@@ -6,126 +6,152 @@ Utilitário simples para **Windows** que cria **rota de host**: força o tráfeg
 - Import em Python: `from mmpg_rout import ensure_host_route`
 - CLI opcional: `mmpg-rout --host HOST --nexthop GATEWAY [--persist]`
 
-> ⚠️ **Permissões**: criar/alterar rotas requer console **Executar como Administrador** (a não ser que a rota já exista).
-
----
-
 ## Quando usar?
 - Você tem **duas redes** e precisa que **apenas** um destino (ex.: `dlmg.prodemge.gov.br` – Impala/BISP) saia por um **gateway** diferente.
 - Evita trocar gateway padrão manualmente: tudo continua saindo pela rede padrão, **exceto** o host roteado.
 
 ---
 
-## Instalação
-```bash
-pip install mmpg-rout
+## 📦 Instalação
+
+Você pode instalar a partir do TestPyPI (ou futuramente PyPI oficial):
+
+```powershell
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple mmpg-rout
 ```
 
-Instalar direto do GitHub (opcional):
-```bash
-pip install "git+https://github.com/ValfridoNovais/mmpg-rout.git@v0.1.0"
+Se estiver desenvolvendo localmente (na pasta do projeto):
+
+```powershell
+pip install -e .
 ```
+
+Isso instalará o pacote no ambiente atual (conda/venv/etc.).
 
 ---
 
-## Uso em Python
+## 🚀 Uso no código Python
+
+### Exemplo simples:
+
 ```python
 from mmpg_rout import ensure_host_route
 
-# Cria rota de host para o hostname resolvido (todos os A-records IPv4)
-# via gateway informado. Se persist=True, grava rota persistente no SO.
-ensure_host_route("dlmg.prodemge.gov.br", "10.14.56.1", persist=True)
+# Cria rota temporária (só até reiniciar)
+ensure_host_route("dlmg.prodemge.gov.br", "10.14.56.1")
 
-# Depois faça sua conexão normalmente (ODBC, requests, etc.)
+# Cria rota persistente (fica gravada no Windows)
+ensure_host_route("dlmg.prodemge.gov.br", "10.14.56.1", persist=True)
 ```
 
-Parâmetros:
-- `hostname` (str): ex. `"dlmg.prodemge.gov.br"`
-- `nexthop` (str): gateway de saída, ex. `"10.14.56.1"`
-- `persist` (bool): `True` cria rota **persistente** (permanece após reboot).
+* `hostname` → domínio ou IP do destino.
+* `nexthop` → gateway da sua rede local.
+* `persist=True` → mantém a rota mesmo após reiniciar.
+
+### Integração em projetos que usam ODBC
+
+Basta garantir a rota antes de conectar:
+
+```python
+from mmpg_rout import ensure_host_route
+import pyodbc
+
+# Garante a rota
+ensure_host_route("dlmg.prodemge.gov.br", "10.14.56.1")
+
+# Agora conecta normalmente
+conn = pyodbc.connect("Driver={Cloudera ODBC Driver for Impala};...etc...")
+```
+
+Assim, qualquer código que rodar dentro desse ambiente já terá a rota configurada.
 
 ---
 
-## Uso via CLI
-```bash
-# criar rota temporária
+## 💻 Uso via CLI (linha de comando)
+
+Após instalar o pacote, o comando `mmpg-rout` ficará disponível no terminal.
+
+```powershell
+# Rota temporária (só até reiniciar)
 mmpg-rout --host dlmg.prodemge.gov.br --nexthop 10.14.56.1
 
-# criar rota persistente (requer Admin)
+# Rota persistente (precisa rodar PowerShell como administrador)
 mmpg-rout --host dlmg.prodemge.gov.br --nexthop 10.14.56.1 --persist
 ```
 
----
+### Funcionamento do modo persistente
 
-## Testes rápidos (PowerShell)
+Se você usar `--persist`, o Windows salva a rota de forma definitiva. Isso significa que **qualquer programa** (Python, navegador, ODBC, etc.) que tentar acessar o host especificado **sempre usará o gateway configurado**, sem precisar alterar o código.
+
+### Verificando as rotas atuais:
+
 ```powershell
-# ver rota registrada
-route print 10.100.62.20
+route print
+```
 
-# testar porta (ex.: Impala em 21051)
-Test-NetConnection dlmg.prodemge.gov.br -Port 21051
+### Removendo uma rota manualmente:
+
+```powershell
+route delete 10.100.62.20
+```
+
+*(substitua pelo IP real do host que foi resolvido)*
+
+---
+
+## 🔧 Alterando gateway ou máscara
+
+Se precisar mudar o gateway, basta recriar a rota:
+
+```python
+ensure_host_route("dlmg.prodemge.gov.br", "NOVO_GATEWAY", persist=True)
+```
+
+Ou pela CLI:
+
+```powershell
+mmpg-rout --host dlmg.prodemge.gov.br --nexthop NOVO_GATEWAY --persist
+```
+
+A máscara usada é sempre `/32` (`255.255.255.255`) porque a rota é criada para **um único host**.
+
+---
+
+## ❌ Desinstalação
+
+Para remover a biblioteca do ambiente Python:
+
+```powershell
+pip uninstall mmpg-rout
+```
+
+Para remover a rota persistente do Windows:
+
+```powershell
+route delete 10.100.62.20
 ```
 
 ---
 
-## Como funciona
-1. Resolve o `hostname` para **todos** os **IPv4** (caso haja balanceamento).
-2. Para cada IP resolvido:
-   - Checa se já existe rota passando por `nexthop`.
-   - Se não existir, executa `route add <IP> mask 255.255.255.255 <nexthop>`  
-     (`-p` quando `persist=True`).
+## 📌 Resumo das opções
 
-Apenas o tráfego para o **destino** roteado usa o gateway alternativo; todo o restante continua usando o **gateway padrão** do Windows.
+* **No código**: garante a rota a cada execução.
+* **Via CLI (temporário)**: funciona até reiniciar o PC.
+* **Via CLI (persistente)**: fica registrado no Windows e vale para todos os programas.
 
 ---
 
-## Segurança / Boas práticas
-- **Evite expor IPs internos** (ex.: `10.100.62.20`) em docs públicos. Prefira mostrar **hostname** nos exemplos.  
-- Em repositório público, use exemplos genéricos (ex.: `example.internal`, `10.14.56.1`).
-- No uso real, passe o **hostname** e deixe o pacote resolver o(s) IP(s).
+## 📖 Observações importantes
+
+* Requer execução em Windows.
+* Para rotas persistentes, o PowerShell precisa estar aberto como **Administrador**.
+* Expor o host `10.100.62.20` ou o gateway **não representa risco de segurança**, pois são endereços de rede interna (não roteáveis na internet).
 
 ---
 
-## Dicas
-- Se existir mais de um gateway **padrão**, ajuste a **métrica** da interface para que sua “rede 2” continue sendo o padrão.
-- Para remover uma rota: `route delete <IP>`
-- Para criar rota por **bloco** (se a TI informar):  
-  `route -p add 10.100.62.0 mask 255.255.255.0 10.14.56.1`
+## 👨‍💻 Autor
 
----
+* **Valfrido Novais**
+  PMMG · MMPG NOVAIS
 
-## Solução de problemas
-- **“A operação solicitada requer elevação.”**  
-  Abra o **Prompt/PowerShell como Administrador**.
-
-- **“Unexpected response from server” no ODBC**  
-  Geralmente significa que o tráfego foi pela rede errada. Verifique se a rota para o IP do host foi criada com o `nexthop` correto.
-
-- **Hostname com múltiplos IPs (balanceamento)**  
-  O pacote cria rotas para **todos** os A-records IPv4 resolvidos no momento da chamada.
-
----
-
-## Desenvolvimento / Publicação
-Gerar artefatos e publicar no PyPI:
-```bash
-pip install build twine
-python -m build
-python -m twine upload dist/*
-```
-
-Instalar a versão publicada:
-```bash
-pip install mmpg-rout
-```
-
----
-
-## Licença
-MIT.
-
----
-
-## Links
-- Repositório: https://github.com/ValfridoNovais/mmpg-rout
-- Issues: https://github.com/ValfridoNovais/mmpg-rout/issues
+Repositório: [github.com/ValfridoNovais/mmpg-rout](https://github.com/ValfridoNovais/mmpg-rout)
