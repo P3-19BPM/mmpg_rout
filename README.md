@@ -6,6 +6,8 @@ Utilitário simples para **Windows** que cria **rota de host**: força o tráfeg
 - Import em Python: `from mmpg_rout import ensure_host_route`
 - CLI opcional: `mmpg-rout --host HOST --nexthop GATEWAY [--persist]`
 
+---
+
 ## Quando usar?
 - Você tem **duas redes** e precisa que **apenas** um destino (ex.: `dlmg.prodemge.gov.br` – Impala/BISP) saia por um **gateway** diferente.
 - Evita trocar gateway padrão manualmente: tudo continua saindo pela rede padrão, **exceto** o host roteado.
@@ -14,11 +16,12 @@ Utilitário simples para **Windows** que cria **rota de host**: força o tráfeg
 
 ## 📦 Instalação
 
-Você pode instalar a partir do TestPyPI (ou futuramente PyPI oficial):
-
+### Instalação oficial (PyPI)
 ```powershell
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple mmpg-rout
+pip install mmpg-rout
 ```
+
+### Instalação local (modo desenvolvimento)
 
 Se estiver desenvolvendo localmente (na pasta do projeto):
 
@@ -67,17 +70,30 @@ Assim, qualquer código que rodar dentro desse ambiente já terá a rota configu
 
 ---
 
-## 💻 Uso via CLI (linha de comando)
+## 💻 Uso via CLI (Windows)
 
-Após instalar o pacote, o comando `mmpg-rout` ficará disponível no terminal.
+Após instalar o pacote (`pip install mmpg-rout`), o comando `mmpg-rout` ficará disponível no terminal (PowerShell ou Prompt de Comando).
 
+### 🔹 Rota temporária
+Funciona somente até reiniciar o computador:
 ```powershell
-# Rota temporária (só até reiniciar)
 mmpg-rout --host dlmg.prodemge.gov.br --nexthop 10.14.56.1
+```
+### 🔹 Rota persistente
 
-# Rota persistente (precisa rodar PowerShell como administrador)
+Permanece registrada mesmo após reiniciar o Windows (precisa rodar o terminal como Administrador):
+```
 mmpg-rout --host dlmg.prodemge.gov.br --nexthop 10.14.56.1 --persist
 ```
+
+### 🖥️ Integração com DBeaver e Power BI
+
+* DBeaver: após definir a rota persistente, qualquer conexão ODBC/JDBC feita pelo programa já usará o gateway configurado, sem necessidade de ajustes adicionais.
+
+* Power BI: se o host (dlmg.prodemge.gov.br) precisa sair pela rede específica, basta ter configurado a rota persistente antes de abrir o Power BI. O conector de banco vai usar a rota automaticamente.
+
+✅ Em resumo: rode uma vez o comando com --persist (como administrador) e depois esqueça.
+Todos os programas no PC (Python, DBeaver, Power BI, etc.) já saberão qual rota usar para aquele host específico.
 
 ### Funcionamento do modo persistente
 
@@ -154,4 +170,4 @@ route delete 10.100.62.20
 * **Valfrido Novais**
   PMMG · MMPG NOVAIS
 
-Repositório: [github.com/ValfridoNovais/mmpg-rout](https://github.com/ValfridoNovais/mmpg-rout)
+Repositório: [github.com/P3-19BPM/mmpg-rout](https://github.com/P3-19BPM/mmpg-rout)
